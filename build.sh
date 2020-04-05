@@ -31,6 +31,7 @@ repo=goneri/cloud-init
 debug=''
 root_fs='ufs'
 
+fetch -o - https://avalon.dragonflybsd.org/iso-images/dfly-x86_64-5.6.3_REL.iso.bz2|bunzip2 > dfly-x86_64-5.6.3_REL.iso
 dd if=/dev/zero of=image.raw bs=4096 count=1000000
 
 drive=/dev/$(vnconfig vn image.raw)
