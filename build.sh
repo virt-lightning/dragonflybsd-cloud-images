@@ -32,9 +32,9 @@ debug=''
 root_fs='ufs'
 
 fetch -o - https://avalon.dragonflybsd.org/iso-images/dfly-x86_64-5.6.3_REL.iso.bz2|bunzip2 > dfly-x86_64-5.6.3_REL.iso
-dd if=/dev/zero of=image.raw bs=4096 count=1000000
+dd if=/dev/zero of=final.raw bs=4096 count=1000000
 
-drive=/dev/$(vnconfig vn image.raw)
+drive=/dev/$(vnconfig vn final.raw)
 
 if [ "x$drive" = "x" ]; then
 	help
