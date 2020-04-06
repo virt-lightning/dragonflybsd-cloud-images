@@ -175,7 +175,7 @@ echo '#!/bin/sh
 # $FreeBSD$
 # KEYWORD: firstboot
 # PROVIDE: firstboot_growfs
-# BEFORE: NETWORKING 
+# BEFORE: root
 
 . /etc/rc.subr
 
