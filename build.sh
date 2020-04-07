@@ -22,16 +22,30 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
+version=$1
+repo=$2
+ref=$3
+debug=$4
+if [ -z "$version" ]; then
+    version="12.1"
+fi
+if [ -z "${repo}" ]; then
+    repo="canonical/cloud-init"
+fi
+if [ -z "${debug}" ]; then
+    debug=""
+fi
+set -eux
+
 set -eux
 var=
 fopt=0
 swap=1g
 serno=
-repo=goneri/cloud-init
-debug=''
+#root_fs='hammer2'
 root_fs='ufs'
 
-fetch -o - https://avalon.dragonflybsd.org/iso-images/dfly-x86_64-5.6.3_REL.iso.bz2|bunzip2 > dfly-x86_64-5.6.3_REL.iso
+fetch -o - https://avalon.dragonflybsd.org/iso-images/dfly-x86_64-${version}_REL.iso.bz2|bunzip2 > dfly-x86_64-${version}_REL.iso
 dd if=/dev/zero of=final.raw bs=4096 count=1000000
 
 drive=/dev/$(vnconfig vn final.raw)
@@ -94,7 +108,7 @@ mount -t ${root_fs} ${drive}s2 /efimnt
 mkdir -p /efimnt/boot
 mount ${drive}s0a /efimnt/boot
 
-vn_cdrom=$(vnconfig vn dfly-x86_64-5.6.3_REL.iso)
+vn_cdrom=$(vnconfig vn dfly-x86_64-${version}_REL.iso)
 mount -t cd9660 /dev/${vn_cdrom} /mnt/
 
 cpdup -v /mnt /efimnt
