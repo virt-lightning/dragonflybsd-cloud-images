@@ -113,9 +113,12 @@ mount -t cd9660 /dev/${vn_cdrom} /mnt/
 
 cpdup -v /mnt /efimnt
 cpdup -v /mnt/boot /efimnt/boot
-
 umount /mnt
 vnconfig -u ${vn_cdrom}
+
+rm -r /efimnt/etc.hdd
+rm -r /efimnt/README* /efimnt/autorun* /dflybsd.ico /index.html
+
 
 # number (or no serial number).
 #
