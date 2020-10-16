@@ -27,7 +27,7 @@ repo=$2
 ref=$3
 debug=$4
 if [ -z "$version" ]; then
-    version="12.1"
+    version="5.8.3"
 fi
 if [ -z "${repo}" ]; then
     repo="canonical/cloud-init"
@@ -218,7 +218,10 @@ run_rc_command "$1"
 ' > /efimnt/usr/local/etc/rc.d/firstboot_growfs
 chmod 755 /efimnt/usr/local/etc/rc.d/firstboot_growfs
 
-
+echo "Welcome to DragonFly!" > /efimnt/etc/issue
+chroot /efimnt sh -c 'pw mod user root -w no'
+sed -i .bak '/installer.*/d' /efimnt/etc/passwd
+rm /efimnt/etc/passwd.bak
 echo "Unmounting /efimnt/boot and /efimnt"
 
 umount /efimnt/proc
