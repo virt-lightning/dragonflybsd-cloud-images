@@ -171,7 +171,7 @@ mount -t devfs dev /efimnt/dev
 echo "nameserver 1.1.1.1" > /efimnt/etc/resolv.conf
 #chroot /efimnt fetch -o - https://github.com/canonical/cloud-init/archive/master.tar.gz | tar xz -f - -C /efimnt/tmp
 fetch -o - https://github.com/${repo}/archive/master.tar.gz | tar xz -f - -C /efimnt/tmp
-chroot /efimnt sh -c 'pkg install -y python3'
+chroot /efimnt sh -c 'pkg install -y python3 dmidecode'
 chroot /efimnt sh -c 'cd /tmp/cloud-init* && ./tools/build-on-freebsd'
 rm /efimnt/var/db/pkg/repo-Avalon.sqlite
 test -z "$debug" || chroot /efimnt pw mod user root -w no  # Lock root account
