@@ -172,9 +172,10 @@ echo "nameserver 1.1.1.1" > /efimnt/etc/resolv.conf
 #chroot /efimnt fetch -o - https://github.com/canonical/cloud-init/archive/master.tar.gz | tar xz -f - -C /efimnt/tmp
 fetch -o - https://github.com/${repo}/archive/master.tar.gz | tar xz -f - -C /efimnt/tmp
 # See: https://www.mail-archive.com/users@dragonflybsd.org/msg05733.html
+chroot /efimnt sh -c 'pkg install -y pkg' || true
 chroot /efimnt sh -c 'cp /usr/local/etc/pkg/repos/df-latest.conf.sample /usr/local/etc/pkg/repos/df-latest.conf'
-chroot /efimnt sh -c 'pkg install -y python39 dmidecode'
-chroot /efimnt sh -c 'cd /tmp/cloud-init* && ./tools/build-on-freebsd'
+chroot /efimnt sh -c 'pkg install -y python37 dmidecode'
+chroot /efimnt sh -c 'cd /tmp/cloud-init* && PYTHON=python3.7 ./tools/build-on-freebsd'
 rm /efimnt/var/db/pkg/repo-Avalon.sqlite
 test -z "$debug" || chroot /efimnt pw mod user root -w no  # Lock root account
 
