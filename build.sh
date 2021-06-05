@@ -35,17 +35,18 @@ fi
 if [ -z "${debug}" ]; then
     debug=""
 fi
-set -eux
 
 set -eux
 var=
 fopt=0
 swap=1g
 serno=
-#root_fs='hammer2'
-root_fs='ufs'
+root_fs='hammer2'
+#root_fs='ufs'
 
-fetch -o - https://avalon.dragonflybsd.org/iso-images/dfly-x86_64-${version}_REL.iso.bz2|bunzip2 > dfly-x86_64-${version}_REL.iso
+if [ ! -f dfly-x86_64-${version}_REL.iso ]; then
+    fetch -o - https://avalon.dragonflybsd.org/iso-images/dfly-x86_64-${version}_REL.iso.bz2|bunzip2 > dfly-x86_64-${version}_REL.iso
+fi
 dd if=/dev/zero of=final.raw bs=4096 count=1000000
 
 drive=/dev/$(vnconfig vn final.raw)
@@ -67,11 +68,13 @@ fi
 #
 gpt destroy $drive
 dd if=/dev/zero of=$drive bs=32k count=64 > /dev/null 2>&1
+#gpt init -B -f $drive
 gpt create $drive
 if [ $? != 0 ]; then
     echo "gpt create failed"
     exit 1
 fi
+
 
 # GPT partitioning
 #
@@ -81,44 +84,56 @@ fi
 gpt boot ${drive}
 boot0cfg -B -t 20 -s 2 ${drive}
 disklabel -B -r -w ${drive}s0 auto
-
-
 disklabel ${drive}s0 > /tmp/newlabel
 echo 'a: * * 4.2BSD' >> /tmp/newlabel
+disklabel -R ${drive}s0 /tmp/newlabel
+##
+gpt add -i 1 -s 1048576 -t efi ${drive}
+gpt label -i 1 -l "EFI System" ${drive}
 
-disklabel -R ${drive}s0	/tmp/newlabel # add `a: * * 4.2BSD', to add `a' partition
-gpt add -i 1 -s 1000 -t swap ${drive}
-gpt add -i 2 -t ${root_fs} ${drive}
-gpt label -i 2 -l ROOT ${drive}
+
+gpt add -i 2 -s 2000000 -t swap ${drive}
+gpt add -i 3 -t ${root_fs} ${drive}
+gpt label -i 3 -l ROOT ${drive}
 sleep 0.5
+gpt -v show -l $drive
 
 
 newfs ${drive}s0a
 if [ "$root_fs" = "hammer2" ]; then 
-    newfsi_hammer2 ${drive}s2
+    newfs_hammer2 -L DATA ${drive}s3
 else
-    newfs ${drive}s2
+    newfs ${drive}s3
 fi
 
 # DragonFly mounts, setup for installation
 #
 echo "Mounting DragonFly for copying"
-mkdir -p /efimnt
-mount -t ${root_fs} ${drive}s2 /efimnt
-mkdir -p /efimnt/boot
-mount ${drive}s0a /efimnt/boot
+mkdir -p /new
+mount -t ${root_fs} ${drive}s3 /new
+mkdir -p /new/boot
+mount ${drive}s0a /new/boot
 
 vn_cdrom=$(vnconfig vn dfly-x86_64-${version}_REL.iso)
 mount -t cd9660 /dev/${vn_cdrom} /mnt/
 
-cpdup -v /mnt /efimnt
-cpdup -v /mnt/boot /efimnt/boot
+cpdup -q /mnt /new
+cpdup -q /mnt/boot /new/boot
 umount /mnt
 vnconfig -u ${vn_cdrom}
 
-rm -r /efimnt/etc.hdd
-rm -r /efimnt/README* /efimnt/autorun* /dflybsd.ico /index.html
+rm -r /new/etc
+mv /new/etc.hdd /new/etc
+rm -r /new/README* /new/autorun* /new/dflybsd.ico /new/index.html
 
+
+# TODO adjust the mount point names
+mkdir -p /new2
+newfs_msdos ${drive}s1
+mount_msdos ${drive}s1 /new2
+mkdir -p /new2/efi/boot
+cp -v /new/boot/boot1.efi /new2/efi/boot/bootx64.efi
+umount /new2
 
 # number (or no serial number).
 #
@@ -142,93 +157,55 @@ mfrom=vbd0
 
 echo "Fixingup files for a ${serno}s1d root"
 
-# Add mountfrom to /efimnt/boot/loader.conf
+# Add mountfrom to /new/boot/loader.conf
 #
-echo "vfs.root.mountfrom=\"${root_fs}:vbd0s2\"" > /efimnt/boot/loader.conf
-
-# Add dumpdev to /etc/rc.conf
-#
-#echo "dumpdev=\"/dev/${mfrom}s1b\"" >> /efimnt/etc/rc.conf
+echo "vfs.root.mountfrom=\"${root_fs}:vbd0s3\"" > /new/boot/loader.conf
 
 # Create a fresh /etc/fstab
 #
-echo '# Device		Mountpoint	FStype	Options		Dump	Pass#' > /efimnt/etc/fstab
-printf "%-20s %-15s ${root_fs}\trw\t1 1\n" "${mfrom}s2" "/" \
-			>> /efimnt/etc/fstab
-printf "%-20s %-15s ufs\trw\t1 1\n" "${mfrom}s0a" "/boot" \
-			>> /efimnt/etc/fstab
-printf "%-20s %-15s swap\tsw\t0 0\n" "${mfrom}s1" "none" \
-			>> /efimnt/etc/fstab
-printf "%-20s %-15s procfs\trw\t4 4\n" "proc" "/proc" \
-			>> /efimnt/etc/fstab
+echo '# Device		Mountpoint	FStype	Options		Dump	Pass#' > /new/etc/fstab
+printf "%-20s %-15s ${root_fs}\trw\t1 1\n" "${mfrom}s3" "/" >> /new/etc/fstab
+printf "%-20s %-15s ufs\trw\t1 1\n" "${mfrom}s0a" "/boot" >> /new/etc/fstab
+printf "%-20s %-15s swap\tsw\t0 0\n" "${mfrom}s1" "none" >> /new/etc/fstab
+printf "%-20s %-15s procfs\trw\t4 4\n" "proc" "/proc" >> /new/etc/fstab
 
-echo "tmpfs	/tmp		tmpfs	rw		0	0" >> /efimnt/etc/fstab
-
+cat /new/etc/fstab
 
 # Enable Cloud-init
-mount -t procfs proc /efimnt/proc
-mount -t devfs dev /efimnt/dev
-echo "nameserver 1.1.1.1" > /efimnt/etc/resolv.conf
-#chroot /efimnt fetch -o - https://github.com/canonical/cloud-init/archive/master.tar.gz | tar xz -f - -C /efimnt/tmp
-fetch -o - https://github.com/${repo}/archive/master.tar.gz | tar xz -f - -C /efimnt/tmp
+mount -t procfs proc /new/proc
+mount -t devfs dev /new/dev
+echo "nameserver 1.1.1.1" > /new/etc/resolv.conf
+#chroot /new fetch -o - https://github.com/canonical/cloud-init/archive/master.tar.gz | tar xz -f - -C /new/tmp
+fetch -o - https://github.com/${repo}/archive/master.tar.gz | tar xz -f - -C /new/tmp
 # See: https://www.mail-archive.com/users@dragonflybsd.org/msg05733.html
-chroot /efimnt sh -c 'pkg install -y pkg' || true
-chroot /efimnt sh -c 'cp /usr/local/etc/pkg/repos/df-latest.conf.sample /usr/local/etc/pkg/repos/df-latest.conf'
-chroot /efimnt sh -c 'pkg install -y python37 dmidecode'
-chroot /efimnt sh -c 'cd /tmp/cloud-init* && PYTHON=python3.7 ./tools/build-on-freebsd'
-rm /efimnt/var/db/pkg/repo-Avalon.sqlite
-test -z "$debug" || chroot /efimnt pw mod user root -w no  # Lock root account
+chroot /new sh -c 'pkg install -y pkg' || true
+chroot /new sh -c 'cp /usr/local/etc/pkg/repos/df-latest.conf.sample /usr/local/etc/pkg/repos/df-latest.conf'
+chroot /new sh -c 'pkg install -y python37 dmidecode'
+chroot /new sh -c 'cd /tmp/cloud-init* && PYTHON=python3.7 ./tools/build-on-freebsd'
+rm /new/var/db/pkg/repo-Avalon.sqlite
+umount /new/proc
+umount /new/dev
 
-echo 'boot_multicons="YES"' >> /efimnt/boot/loader.conf
-echo 'boot_serial="YES"' >> /efimnt/boot/loader.conf
-echo 'comconsole_speed="115200"' >> /efimnt/boot/loader.conf
-echo 'autoboot_delay="1"' >> /efimnt/boot/loader.conf
-echo 'console="comconsole,vidconsole"' >> /efimnt/boot/loader.conf
-echo 'sshd_enable="YES"' >> /efimnt/etc/rc.conf
-echo 'firstboot_growfs_enable="YES"' >> /efimnt/etc/rc.conf
-sed -e '' -i 's,nfs_client_enable=.*,nfs_client_enable=NO,' /efimnt/etc/rc.conf
-echo '' > /efimnt/etc/resolv.conf
-echo '' > /efimnt/firstboot
+echo 'boot_multicons="YES"' >> /new/boot/loader.conf
+echo 'boot_serial="YES"' >> /new/boot/loader.conf
+echo 'comconsole_speed="115200"' >> /new/boot/loader.conf
+echo 'autoboot_delay="1"' >> /new/boot/loader.conf
+echo 'console="comconsole,vidconsole"' >> /new/boot/loader.conf
+echo 'sshd_enable="YES"' >> /new/etc/rc.conf
+echo '' > /new/etc/resolv.conf
 
-echo '#!/bin/sh
+echo "Welcome to DragonFly!" > /new/etc/issue
 
-# $FreeBSD$
-# KEYWORD: firstboot
-# PROVIDE: firstboot_growfs
-# BEFORE: root
-
-. /etc/rc.subr
-
-name="firstboot_growfs"
-rcvar=firstboot_growfs_enable
-start_cmd="firstboot_growfs_run"
-stop_cmd=":"
-
-firstboot_growfs_run()
-{
-if [ ! "$(gpt recover vbd0 2>&1)" = "" ]; then
-    mount -fur /
-    gpt show vbd0
-    gpt remove -i 2 vbd0
-    gpt add -i 2 -t ufs vbd0
-    growfs -y /dev/vbd0s2
-    reboot -q
+if [ -z "${debug}" ]; then # Lock root account
+    chroot /new sh -c "pw mod user root -w no"
+else
+    chroot /new sh -c 'echo "!234AaAa56" | pw usermod -n root -h 0'
 fi
-}
 
-load_rc_config $name
-run_rc_command "$1"
-' > /efimnt/usr/local/etc/rc.d/firstboot_growfs
-chmod 755 /efimnt/usr/local/etc/rc.d/firstboot_growfs
+sed -i .bak '/installer.*/d' /new/etc/passwd
+rm /new/etc/passwd.bak
+echo "Unmounting /new/boot and /new"
 
-echo "Welcome to DragonFly!" > /efimnt/etc/issue
-chroot /efimnt sh -c 'pw mod user root -w no'
-sed -i .bak '/installer.*/d' /efimnt/etc/passwd
-rm /efimnt/etc/passwd.bak
-echo "Unmounting /efimnt/boot and /efimnt"
-
-umount /efimnt/proc
-umount /efimnt/dev
-umount /efimnt/boot
-umount /efimnt
+umount /new/boot
+umount /new
 vnconfig -u ${drive}
