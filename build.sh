@@ -170,6 +170,7 @@ printf "%-20s %-15s swap\tsw\t0 0\n" "${mfrom}s1" "none" >> /new/etc/fstab
 printf "%-20s %-15s procfs\trw\t4 4\n" "proc" "/proc" >> /new/etc/fstab
 
 cat /new/etc/fstab
+chroot /new sh -c '/usr/sbin/pwd_mkdb -p /etc/master.passwd' || true
 
 # Enable Cloud-init
 mount -t procfs proc /new/proc
