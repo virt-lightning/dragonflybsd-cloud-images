@@ -186,6 +186,15 @@ chroot /new sh -c 'pkg install -y pkg' || true
 chroot /new sh -c 'cp /usr/local/etc/pkg/repos/df-latest.conf.sample /usr/local/etc/pkg/repos/df-latest.conf'
 chroot /new sh -c 'pkg install -y python37 dmidecode'
 chroot /new sh -c 'cd /tmp/cloud-init* && PYTHON=python3.7 ./tools/build-on-freebsd'
+
+
+echo '
+growpart:
+   mode: growpart
+   devices:
+      - "/dev/vbd0s3"
+' >> /new/etc/cloud/cloud.cfg
+
 rm /new/var/db/pkg/repo-Avalon.sqlite
 umount /new/proc
 umount /new/dev
