@@ -1,0 +1,14 @@
+#!/usr/local/bin/python3.7
+
+import subprocess
+import sys
+
+if "--help" in sys.argv[1:]:
+    print("Wrapper to call gpt expand.")
+    print("--update dummy")
+    exit(0)
+if "--dry-run" in sys.argv[1:]:
+    exit(0)
+
+if len(sys.argv) == 3:
+    subprocess.run(["gpt", "expand", sys.argv[1]])
