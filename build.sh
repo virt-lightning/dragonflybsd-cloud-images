@@ -26,8 +26,10 @@ version=$1
 repo=$2
 ref=$3
 debug=$4
+
+media=git
 if [ -z "$version" ]; then
-    version="5.8.3"
+    version="6.0.0"
 fi
 if [ -z "${repo}" ]; then
     repo="canonical/cloud-init"
@@ -44,23 +46,21 @@ serno=
 root_fs='hammer2'
 #root_fs='ufs'
 
-if [ ! -f dfly-x86_64-${version}_REL.iso ]; then
-    fetch -o - https://avalon.dragonflybsd.org/iso-images/dfly-x86_64-${version}_REL.iso.bz2|bunzip2 > dfly-x86_64-${version}_REL.iso
-fi
-dd if=/dev/zero of=final.raw bs=4096 count=1000000
+#dd if=/dev/zero of=final.raw bs=4096 count=1000000
+dd if=/dev/zero of=final.raw bs=4096 count=900000
 
 drive=/dev/$(vnconfig vn final.raw)
 
 if [ "x$drive" = "x" ]; then
-	help
+    help
 fi
 
 if [ ! -c $drive ]; then
-	if [ ! -c /dev/$drive ]; then
-	    echo "efisetup: $drive is not a char-special device"
-	    exit 1
-	fi
-	drive="/dev/$drive"
+    if [ ! -c /dev/$drive ]; then
+        echo "efisetup: $drive is not a char-special device"
+        exit 1
+    fi
+    drive="/dev/$drive"
 fi
 
 # Ok, do all the work.  Start by creating a fresh EFI
@@ -114,17 +114,39 @@ mount -t ${root_fs} ${drive}s3 /new
 mkdir -p /new/boot
 mount ${drive}s0a /new/boot
 
-vn_cdrom=$(vnconfig vn dfly-x86_64-${version}_REL.iso)
-mount -t cd9660 /dev/${vn_cdrom} /mnt/
+if [ "${media}" = "cdrom" ]; then
+    if [ ! -f dfly-x86_64-${version}_REL.iso ]; then
+        fetch -o - https://avalon.dragonflybsd.org/iso-images/dfly-x86_64-${version}_REL.iso.bz2|bunzip2 > dfly-x86_64-${version}_REL.iso
+    fi
+    vn_cdrom=$(vnconfig vn dfly-x86_64-${version}_REL.iso)
+    mount -t cd9660 /dev/${vn_cdrom} /mnt/
+    
+    cpdup -q /mnt /new
+    cpdup -q /mnt/boot /new/boot
+    umount /mnt
+    vnconfig -u ${vn_cdrom}
+    rm -r /new/etc
+    mv /new/etc.hdd /new/etc
+    rm -r /new/README* /new/autorun* /new/dflybsd.ico /new/index.html
+    echo "nameserver 1.1.1.1" > /new/etc/resolv.conf
+else
+   rm -rf /usr/src
+   git clone https://github.com/dragonFlyBSD/dragonFlyBSD /usr/src
+    (
+        cd /usr/src
+    git checkout -B DragonFly_RELEASE_6_0 origin/DragonFly_RELEASE_6_0
+    make buildworld
+    make buildkernel
+    make installworld DESTDIR=/new
+    make installkernel DESTDIR=/new
+    cd etc
+    make distribution DESTDIR=/new
+        chroot /new sh -c "echo 'nameserver 1.1.1.1' > /etc/resolv.conf; cd /usr; make pkg-bootstrap;pkg-static install -y pkg"
+        touch /new/etc/rc.conf
+    )
+fi
 
-cpdup -q /mnt /new
-cpdup -q /mnt/boot /new/boot
-umount /mnt
-vnconfig -u ${vn_cdrom}
 
-rm -r /new/etc
-mv /new/etc.hdd /new/etc
-rm -r /new/README* /new/autorun* /new/dflybsd.ico /new/index.html
 
 
 # TODO adjust the mount point names
@@ -138,11 +160,11 @@ umount /new2
 # number (or no serial number).
 #
 # serno - full drive path or serial number, sans slice & partition,
-#	  including the /dev/, which we use as an intermediate
-#	  variable.
+#      including the /dev/, which we use as an intermediate
+#      variable.
 #
 # mfrom - partial drive path as above except without the /dev/,
-#	  allowed in mountfrom and fstab.
+#      allowed in mountfrom and fstab.
 #
 if [ "x$serno" == "x" ]; then
     serno=${drive}
@@ -163,7 +185,7 @@ echo "vfs.root.mountfrom=\"${root_fs}:vbd0s3\"" > /new/boot/loader.conf
 
 # Create a fresh /etc/fstab
 #
-echo '# Device		Mountpoint	FStype	Options		Dump	Pass#' > /new/etc/fstab
+echo '# Device        Mountpoint    FStype    Options        Dump    Pass#' > /new/etc/fstab
 printf "%-20s %-15s ${root_fs}\trw\t1 1\n" "${mfrom}s3" "/" >> /new/etc/fstab
 printf "%-20s %-15s ufs\trw\t1 1\n" "${mfrom}s0a" "/boot" >> /new/etc/fstab
 printf "%-20s %-15s swap\tsw\t0 0\n" "${mfrom}s1" "none" >> /new/etc/fstab
@@ -172,15 +194,15 @@ printf "%-20s %-15s procfs\trw\t4 4\n" "proc" "/proc" >> /new/etc/fstab
 cat /new/etc/fstab
 chroot /new sh -c '/usr/sbin/pwd_mkdb -p /etc/master.passwd' || true
 
+pwd
+mkdir -p /new/usr/local/bin
 cp -v growpart /new/usr/local/bin/growpart
 chmod +x /new/usr/local/bin/growpart
 
 # Enable Cloud-init
 mount -t procfs proc /new/proc
 mount -t devfs dev /new/dev
-echo "nameserver 1.1.1.1" > /new/etc/resolv.conf
-#chroot /new fetch -o - https://github.com/canonical/cloud-init/archive/master.tar.gz | tar xz -f - -C /new/tmp
-fetch -o - https://github.com/${repo}/archive/master.tar.gz | tar xz -f - -C /new/tmp
+fetch -o - https://github.com/${repo}/archive/main.tar.gz | tar xz -f - -C /new/tmp
 # See: https://www.mail-archive.com/users@dragonflybsd.org/msg05733.html
 chroot /new sh -c 'pkg install -y pkg' || true
 chroot /new sh -c 'cp /usr/local/etc/pkg/repos/df-latest.conf.sample /usr/local/etc/pkg/repos/df-latest.conf'
@@ -218,7 +240,7 @@ fi
 sed -i .bak '/installer.*/d' /new/etc/passwd
 rm /new/etc/passwd.bak
 echo "Unmounting /new/boot and /new"
-
+df -h
 umount /new/boot
 umount /new
 vnconfig -u ${drive}
