@@ -22,11 +22,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
+
 version=$1
 repo=$2
 ref=$3
 debug=$4
 
+semver=(${version//./ })
 media=git
 if [ -z "$version" ]; then
     version="6.0.0"
@@ -43,8 +45,7 @@ var=
 fopt=0
 swap=1g
 serno=
-root_fs='hammer2'
-#root_fs='ufs'
+root_fs="${root_fs:-hammer2}"  # ufs or hammer2
 
 #dd if=/dev/zero of=final.raw bs=4096 count=1000000
 dd if=/dev/zero of=final.raw bs=4096 count=900000
@@ -134,7 +135,7 @@ else
    git clone https://github.com/dragonFlyBSD/dragonFlyBSD /usr/src
     (
         cd /usr/src
-    git checkout -B DragonFly_RELEASE_6_0 origin/DragonFly_RELEASE_6_0
+    git checkout -B "DragonFly_RELEASE_${semver[0]}_${semver[1]}" "origin/DragonFly_RELEASE_${semver[0]}_${semver[1]}"
     make buildworld
     make buildkernel
     make installworld DESTDIR=/new
