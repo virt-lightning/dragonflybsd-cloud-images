@@ -136,6 +136,8 @@ else
     (
         cd /usr/src
     git checkout -B "DragonFly_RELEASE_${semver[0]}_${semver[1]}" "origin/DragonFly_RELEASE_${semver[0]}_${semver[1]}"
+    sed -i.bak 's,#WANT_INSTALLER=.*,WANT_INSTALLER=no,' /etc/defaults/make.conf
+    sed -i.bak 's,STRIP=.*,STRIP= -s,' /etc/defaults/make.conf
     make buildworld
     make buildkernel
     make installworld DESTDIR=/new
