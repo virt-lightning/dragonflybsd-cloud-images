@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright (c) 2017 Matthew Dillon. All rights reserved.
 #
@@ -22,47 +22,21 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-
-version=$1
-repo=$2
-ref=$3
+version="${1:-6.0.0}"
+repo="${2:-canonical/cloud-init}"
+ref="${3:-main}"
 debug=$4
-
+install_media="${install_media:-git}"
 semver=(${version//./ })
-media=git
-if [ -z "$version" ]; then
-    version="6.0.0"
-fi
-if [ -z "${repo}" ]; then
-    repo="canonical/cloud-init"
-fi
-if [ -z "${debug}" ]; then
-    debug=""
-fi
 
 set -eux
-var=
-fopt=0
 swap=1g
 serno=
 root_fs="${root_fs:-hammer2}"  # ufs or hammer2
 
-#dd if=/dev/zero of=final.raw bs=4096 count=1000000
 dd if=/dev/zero of=final.raw bs=4096 count=900000
 
 drive=/dev/$(vnconfig vn final.raw)
-
-if [ "x$drive" = "x" ]; then
-    help
-fi
-
-if [ ! -c $drive ]; then
-    if [ ! -c /dev/$drive ]; then
-        echo "efisetup: $drive is not a char-special device"
-        exit 1
-    fi
-    drive="/dev/$drive"
-fi
 
 # Ok, do all the work.  Start by creating a fresh EFI
 # partition table
@@ -115,7 +89,7 @@ mount -t ${root_fs} ${drive}s3 /new
 mkdir -p /new/boot
 mount ${drive}s0a /new/boot
 
-if [ "${media}" = "cdrom" ]; then
+if [ "${install_media}" = "cdrom" ]; then
     if [ ! -f dfly-x86_64-${version}_REL.iso ]; then
         fetch -o - https://avalon.dragonflybsd.org/iso-images/dfly-x86_64-${version}_REL.iso.bz2|bunzip2 > dfly-x86_64-${version}_REL.iso
     fi
