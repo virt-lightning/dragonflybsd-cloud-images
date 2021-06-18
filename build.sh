@@ -34,7 +34,11 @@ swap=1g
 serno=
 root_fs="${root_fs:-hammer2}"  # ufs or hammer2
 
-dd if=/dev/zero of=final.raw bs=4096 count=900000
+if [ "$install_media" = "cdrom" ]; then
+    dd if=/dev/zero of=final.raw bs=4096 count=2500000
+else
+    dd if=/dev/zero of=final.raw bs=4096 count=900000
+fi
 
 drive=/dev/$(vnconfig vn final.raw)
 
@@ -75,7 +79,7 @@ gpt -v show -l $drive
 
 
 newfs ${drive}s0a
-if [ "$root_fs" = "hammer2" ]; then 
+if [ "$root_fs" = "hammer2" ]; then
     newfs_hammer2 -L DATA ${drive}s3
 else
     newfs ${drive}s3
@@ -95,7 +99,7 @@ if [ "${install_media}" = "cdrom" ]; then
     fi
     vn_cdrom=$(vnconfig vn dfly-x86_64-${version}_REL.iso)
     mount -t cd9660 /dev/${vn_cdrom} /mnt/
-    
+
     cpdup -q /mnt /new
     cpdup -q /mnt/boot /new/boot
     umount /mnt
@@ -105,19 +109,19 @@ if [ "${install_media}" = "cdrom" ]; then
     rm -r /new/README* /new/autorun* /new/dflybsd.ico /new/index.html
     echo "nameserver 1.1.1.1" > /new/etc/resolv.conf
 else
-   rm -rf /usr/src
-   git clone https://github.com/dragonFlyBSD/dragonFlyBSD /usr/src
+    rm -rf /usr/src
+    git clone https://github.com/dragonFlyBSD/dragonFlyBSD /usr/src
     (
         cd /usr/src
-    git checkout -B "DragonFly_RELEASE_${semver[0]}_${semver[1]}" "origin/DragonFly_RELEASE_${semver[0]}_${semver[1]}"
-    sed -i.bak 's,#WANT_INSTALLER=.*,WANT_INSTALLER=no,' /etc/defaults/make.conf
-    sed -i.bak 's,STRIP=.*,STRIP= -s,' /etc/defaults/make.conf
-    make buildworld
-    make buildkernel
-    make installworld DESTDIR=/new
-    make installkernel DESTDIR=/new
-    cd etc
-    make distribution DESTDIR=/new
+        git checkout -B "DragonFly_RELEASE_${semver[0]}_${semver[1]}" "origin/DragonFly_RELEASE_${semver[0]}_${semver[1]}"
+        sed -i.bak 's,#WANT_INSTALLER=.*,WANT_INSTALLER=no,' /etc/defaults/make.conf
+        sed -i.bak 's,STRIP=.*,STRIP= -s,' /etc/defaults/make.conf
+        make buildworld
+        make buildkernel
+        make installworld DESTDIR=/new
+        make installkernel DESTDIR=/new
+        cd etc
+        make distribution DESTDIR=/new
         chroot /new sh -c "echo 'nameserver 1.1.1.1' > /etc/resolv.conf; cd /usr; make pkg-bootstrap;pkg-static install -y pkg"
         touch /new/etc/rc.conf
     )
@@ -187,12 +191,48 @@ chroot /new sh -c 'pkg install -y python37 dmidecode'
 chroot /new sh -c 'cd /tmp/cloud-init* && PYTHON=python3.7 ./tools/build-on-freebsd'
 
 
-echo '
+if [ "$root_fs" = "hammer2" ]; then
+    echo '
 growpart:
    mode: growpart
    devices:
       - "/dev/vbd0s3"
 ' >> /new/etc/cloud/cloud.cfg
+else
+    echo 'firstboot_growfs_enable="YES"' >> /new/etc/rc.conf
+    echo '#!/bin/sh
+
+# $FreeBSD$
+# KEYWORD: firstboot
+# PROVIDE: firstboot_growfs
+# BEFORE: root
+
+. /etc/rc.subr
+
+name="firstboot_growfs"
+rcvar=firstboot_growfs_enable
+start_cmd="firstboot_growfs_run"
+stop_cmd=":"
+
+firstboot_growfs_run()
+{
+if [ ! "$(gpt recover vbd0 2>&1)" = "" ]; then
+    mount -fur /
+    gpt show vbd0
+    gpt remove -i 3 vbd0
+    gpt add -i 3 -t ufs vbd0
+    gpt label -i 3 -l ROOT vbd0
+    growfs -y /dev/vbd0s3
+    reboot -q
+fi
+}
+
+load_rc_config $name
+run_rc_command "$1"
+' > /new/usr/local/etc/rc.d/firstboot_growfs
+    chmod 755 /new/usr/local/etc/rc.d/firstboot_growfs
+
+fi
 
 rm /new/var/db/pkg/repo-Avalon.sqlite
 umount /new/proc
@@ -205,6 +245,7 @@ echo 'autoboot_delay="1"' >> /new/boot/loader.conf
 echo 'console="comconsole,vidconsole"' >> /new/boot/loader.conf
 echo 'sshd_enable="YES"' >> /new/etc/rc.conf
 echo '' > /new/etc/resolv.conf
+echo '' > /new/firstboot
 
 echo "Welcome to DragonFly!" > /new/etc/issue
 
