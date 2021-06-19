@@ -203,21 +203,21 @@ else
     echo '#!/bin/sh
 
 # $FreeBSD$
-# KEYWORD: firstboot
-# PROVIDE: firstboot_growfs
-# BEFORE: hostname syslogd root
+# PROVIDE: growfs
+# BEFORE: hostname
+
+# from bsd-cloud-image.org
 
 . /etc/rc.subr
 
-name="firstboot_growfs"
-rcvar=firstboot_growfs_enable
-start_cmd="firstboot_growfs_run"
+name="growfs"
+start_cmd="growfs_run"
 stop_cmd=":"
 
-firstboot_growfs_run()
+growfs_run()
 {
-gpt show vbd0
 if [ ! "$(gpt recover vbd0 2>&1)" = "" ]; then
+    echo "Extending the root partition..."
     mount -fur /
     gpt show vbd0
     gpt remove -i 3 vbd0
@@ -230,9 +230,8 @@ fi
 
 load_rc_config $name
 run_rc_command "$1"
-' > /new/usr/local/etc/rc.d/firstboot_growfs
-    chmod 755 /new/usr/local/etc/rc.d/firstboot_growfs
-    touch /new/firstboot
+' > /new/etc/rc.d/growfs
+    chmod 755 /new/etc/rc.d/growfs
     chroot /new sh -c 'rcorder /etc/rc.d/* /usr/local/etc/rc.d/*' || true
 fi
 
