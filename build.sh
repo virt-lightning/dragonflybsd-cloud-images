@@ -205,7 +205,7 @@ else
 # $FreeBSD$
 # KEYWORD: firstboot
 # PROVIDE: firstboot_growfs
-# BEFORE: root
+# BEFORE: hostname syslogd root
 
 . /etc/rc.subr
 
@@ -231,7 +231,8 @@ load_rc_config $name
 run_rc_command "$1"
 ' > /new/usr/local/etc/rc.d/firstboot_growfs
     chmod 755 /new/usr/local/etc/rc.d/firstboot_growfs
-
+    touch /new/firstboot
+    chroot /new sh -c 'rcorder /etc/rc.d/* /usr/local/etc/rc.d/*' || true
 fi
 
 rm /new/var/db/pkg/repo-Avalon.sqlite
