@@ -216,6 +216,7 @@ stop_cmd=":"
 
 firstboot_growfs_run()
 {
+gpt show vbd0
 if [ ! "$(gpt recover vbd0 2>&1)" = "" ]; then
     mount -fur /
     gpt show vbd0
@@ -223,7 +224,7 @@ if [ ! "$(gpt recover vbd0 2>&1)" = "" ]; then
     gpt add -i 3 -t ufs vbd0
     gpt label -i 3 -l ROOT vbd0
     growfs -y /dev/vbd0s3
-    reboot -q
+    reboot -nq
 fi
 }
 
@@ -246,7 +247,6 @@ echo 'autoboot_delay="1"' >> /new/boot/loader.conf
 echo 'console="comconsole,vidconsole"' >> /new/boot/loader.conf
 echo 'sshd_enable="YES"' >> /new/etc/rc.conf
 echo '' > /new/etc/resolv.conf
-echo '' > /new/firstboot
 
 echo "Welcome to DragonFly!" > /new/etc/issue
 
