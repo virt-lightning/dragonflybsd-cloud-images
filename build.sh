@@ -114,6 +114,9 @@ else
     (
         cd /usr/src
         git checkout -B "DragonFly_RELEASE_${semver[0]}_${semver[1]}" "origin/DragonFly_RELEASE_${semver[0]}_${semver[1]}"
+        git config --global user.name "FIRST_NAME LAST_NAME"
+        git config --global user.email "MY_NAME@example.com"
+        git cherry-pick 8c4b647649f98dc089fc5f15b4c32337f4d7191a
         sed -i.bak 's,#WANT_INSTALLER=.*,WANT_INSTALLER=no,' /etc/defaults/make.conf
         sed -i.bak 's,STRIP=.*,STRIP= -s,' /etc/defaults/make.conf
         make buildworld
