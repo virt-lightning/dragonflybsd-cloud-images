@@ -95,7 +95,7 @@ mount ${drive}s0a /new/boot
 
 if [ "${install_media}" = "cdrom" ]; then
     if [ ! -f dfly-x86_64-${version}_REL.iso ]; then
-        fetch -o - https://avalon.dragonflybsd.org/iso-images/dfly-x86_64-${version}_REL.iso.bz2|bunzip2 > dfly-x86_64-${version}_REL.iso
+        fetch -o - http://avalon.dragonflybsd.org/iso-images/dfly-x86_64-${version}_REL.iso.bz2|bunzip2 > dfly-x86_64-${version}_REL.iso
     fi
     vn_cdrom=$(vnconfig vn dfly-x86_64-${version}_REL.iso)
     mount -t cd9660 /dev/${vn_cdrom} /mnt/
