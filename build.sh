@@ -188,12 +188,13 @@ mount -t procfs proc /new/proc
 mount -t devfs dev /new/dev
 fetch -o - https://github.com/${repo}/archive/main.tar.gz | tar xz -f - -C /new/tmp
 # See: https://www.mail-archive.com/users@dragonflybsd.org/msg05733.html
-chroot /new sh -c 'pkg install -y pkg' || true
-chroot /new sh -c 'pkg upgrade -y' || true
-chroot /new sh -c 'pkg upgrade -y' || true
 chroot /new sh -c 'cp /usr/local/etc/pkg/repos/df-latest.conf.sample /usr/local/etc/pkg/repos/df-latest.conf'
-chroot /new sh -c 'pkg install -y python38 dmidecode'
-chroot /new sh -c 'cd /tmp/cloud-init* && PYTHON=python3.8 ./tools/build-on-freebsd'
+chroot /new sh -c 'pkg install -y pkg' || true
+chroot /new sh -c 'cp /usr/local/etc/pkg/repos/df-latest.conf.sample /usr/local/etc/pkg/repos/df-latest.conf'
+chroot /new sh -c 'pkg upgrade -y' || true
+chroot /new sh -c 'pkg upgrade -y' || true
+chroot /new sh -c 'pkg install -y python39 dmidecode'
+chroot /new sh -c 'cd /tmp/cloud-init* && PYTHON=python3.9 ./tools/build-on-freebsd'
 
 
 if [ "$root_fs" = "hammer2" ]; then
