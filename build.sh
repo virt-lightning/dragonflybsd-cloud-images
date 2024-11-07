@@ -183,6 +183,9 @@ mkdir -p /new/usr/local/bin
 cp -v growpart /new/usr/local/bin/growpart
 chmod +x /new/usr/local/bin/growpart
 
+# https://lists.dragonflybsd.org/pipermail/users/2024-September/452310.html
+test -f /new/etc/ssl || cp /etc/ssl/cert.pem /new/etc/ssl
+
 # Enable Cloud-init
 mount -t procfs proc /new/proc
 mount -t devfs dev /new/dev
