@@ -198,7 +198,8 @@ chroot /new sh -c 'pkg upgrade -y' || true
 chroot /new sh -c 'pkg upgrade -y' || true
 chroot /new sh -c 'pkg install -y python39 dmidecode'
 chroot /new sh -c 'ln -s /usr/local/bin/python3.9 /usr/local/bin/python3'
-chroot /new sh -c 'cd /tmp/cloud-init* && PYTHON=python3.9 ./tools/build-on-freebsd'
+chroot /new sh -c 'cd /tmp/cloud-init* && PYTHON=python3.9 meson setup builddir -Dinit_system=sysvinit_freebsd'
+chroot /new sh -c 'cd /tmp/cloud-init* && PYTHON=python3.9 meson install -C builddir'
 rm -r /tmp/cloud-init*
 
 if [ "$root_fs" = "hammer2" ]; then
