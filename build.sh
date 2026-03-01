@@ -197,6 +197,7 @@ chroot /new sh -c 'cp /usr/local/etc/pkg/repos/df-latest.conf.sample /usr/local/
 chroot /new sh -c 'pkg upgrade -y' || true
 chroot /new sh -c 'pkg upgrade -y' || true
 chroot /new sh -c 'pkg install -y python39 dmidecode'
+chroot /new sh -c 'ln -s /usr/local/bin/python3.9 /usr/local/bin/python3'
 chroot /new sh -c 'cd /tmp/cloud-init* && PYTHON=python3.9 ./tools/build-on-freebsd'
 rm -r /tmp/cloud-init*
 
