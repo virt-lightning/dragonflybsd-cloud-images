@@ -198,7 +198,7 @@ chroot /new sh -c 'pkg upgrade -y' || true
 chroot /new sh -c 'pkg upgrade -y' || true
 chroot /new sh -c 'pkg install -y python39 dmidecode'
 chroot /new sh -c 'cd /tmp/cloud-init* && PYTHON=python3.9 ./tools/build-on-freebsd'
-
+rm -r /tmp/cloud-init*
 
 if [ "$root_fs" = "hammer2" ]; then
     echo '
